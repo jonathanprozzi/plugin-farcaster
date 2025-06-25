@@ -1,4 +1,10 @@
-import { IAgentRuntime, Memory, stringToUuid, UUID } from '@elizaos/core';
+import {
+  IAgentRuntime,
+  Memory,
+  stringToUuid,
+  UUID,
+  createUniqueUuid,
+} from '@elizaos/core';
 import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api';
 import { FARCASTER_SOURCE } from './constants';
 import { Cast } from './types';
@@ -13,7 +19,10 @@ export function castUuid(props: { hash: string; agentId: string }) {
   return stringToUuid(castId(props));
 }
 
-export function splitPostContent(content: string, maxLength: number = MAX_CAST_LENGTH): string[] {
+export function splitPostContent(
+  content: string,
+  maxLength: number = MAX_CAST_LENGTH
+): string[] {
   const paragraphs = content.split('\n\n').map((p) => p.trim());
   const posts: string[] = [];
   let currentCast = '';
@@ -167,4 +176,139 @@ export function formatCastTimestamp(timestamp: Date): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+/**
+ * Extract FID from UUID entityId (reverse of createUniqueUuid)
+ * This is a utility to get back the original FID from the UUID
+ */
+export function extractFidFromEntityId(
+  entityId: string,
+  runtime: IAgentRuntime
+): number | null {
+  try {
+    // Try to find the FID by checking cached values or reverse-engineering
+    // This is a workaround since createUniqueUuid is not easily reversible
+
+    // Method 1: Check if it's a simple FID pattern
+    const fidMatch = entityId.match(/^(\d+)/);
+    if (fidMatch) {
+      const fid = parseInt(fidMatch[1], 10);
+      if (fid > 0 && fid < 1000000) {
+        // Reasonable FID range
+        return fid;
+      }
+    }
+
+    // Method 2: Could store a mapping in cache if needed
+    // For now, return null if we can't extract it
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Create a Memory object with FID easily accessible
+ */
+export function createFarcasterMemory({
+  cast,
+  runtime,
+  roomId,
+}: {
+  cast: Cast;
+  runtime: IAgentRuntime;
+  roomId: UUID;
+}): Memory {
+  const entityId = createUniqueUuid(runtime, cast.authorFid.toString());
+
+  return {
+    id: castUuid({ hash: cast.hash, agentId: runtime.agentId }),
+    agentId: runtime.agentId,
+    entityId,
+    roomId,
+    content: {
+      text: cast.text,
+      source: FARCASTER_SOURCE,
+      metadata: {
+        fid: cast.authorFid,
+        authorFid: cast.authorFid,
+        castHash: cast.hash,
+        threadId: cast.threadId,
+        username: cast.profile.username,
+        displayName: cast.profile.name,
+      },
+    },
+    createdAt: cast.timestamp.getTime(),
+    // DIRECT FID ACCESS
+    fid: cast.authorFid,
+  } as Memory;
+}
+
+/**
+ * Get sender FID data from runtime cache using message ID
+ * This is the reliable way to get FID data from consuming code
+ */
+export async function getSenderFidData(
+  runtime: IAgentRuntime,
+  messageId: UUID
+): Promise<{
+  fid: number;
+  authorFid: number;
+  username: string;
+  displayName: string;
+  castHash: string;
+} | null> {
+  try {
+    const fidCacheKey = `farcaster:fid:${messageId}`;
+    const cached = (await runtime.getCache(fidCacheKey)) as any;
+    if (cached && cached.fid) {
+      return cached;
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Extract FID from message using multiple fallback methods
+ * This is the ONE function your consuming code should use
+ */
+export async function extractSenderFid(
+  runtime: IAgentRuntime,
+  message: Memory
+): Promise<number | null> {
+  try {
+    // Method 1: Get from cache (most reliable)
+    if (message.id) {
+      const fidData = await getSenderFidData(runtime, message.id);
+      if (fidData?.fid) {
+        return fidData.fid;
+      }
+    }
+
+    // Method 2: Check if it's stored in content metadata
+    const metadata = (message.content as any)?.metadata;
+    if (metadata?.fid) {
+      return metadata.fid;
+    }
+    if (metadata?.authorFid) {
+      return metadata.authorFid;
+    }
+
+    // Method 3: Check top-level properties
+    if ((message as any).fid) {
+      return (message as any).fid;
+    }
+
+    // Method 4: Try to parse from entityId (last resort)
+    if (message.entityId) {
+      return extractFidFromEntityId(message.entityId, runtime);
+    }
+
+    return null;
+  } catch (error) {
+    return null;
+  }
 }
