@@ -487,19 +487,6 @@ export class FarcasterInteractionManager {
     );
     console.log('=== END DEBUG ===');
 
-    if (responseActions !== 'RESPOND' && responseActions !== 'REPLY') {
-      logger.info(
-        `Not responding to cast based on shouldRespond decision: ${responseActions}`
-      );
-      try {
-        // save the memory so we don't process it again in mentions
-        await this.runtime.createMemory(memory, 'messages');
-      } catch (error) {
-        logger.error('Error creating ignoredmemory', error);
-      }
-      return;
-    }
-
     // setup callback for the response
     const callback = standardCastHandlerCallback({
       client: this.client,
@@ -522,15 +509,13 @@ export class FarcasterInteractionManager {
       castHash: mention.hash,
     });
 
-    // Emit generic message received events
-    const messageReceivedPayload: MessagePayload = {
-      runtime: this.runtime,
-      message: memory,
-      source: FARCASTER_SOURCE,
-      callback,
-    };
-
-    this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, messageReceivedPayload);
+    // ARCHITECTURAL FIX: Create memory and emit events BEFORE shouldRespond check
+    // This ensures actions can run regardless of character response decisions
+    try {
+      await this.runtime.createMemory(memory, 'messages');
+    } catch (error) {
+      logger.error('Error creating memory', error);
+    }
 
     // Emit platform-specific MENTION_RECEIVED event with enhanced FID data
     const mentionPayload: FarcasterGenericCastPayload = {
@@ -553,5 +538,62 @@ export class FarcasterInteractionManager {
       FarcasterEventTypes.MENTION_RECEIVED,
       mentionPayload
     );
+
+    // CRITICAL: Process voting actions after emitting event
+    // This ensures voting actions run regardless of shouldRespond decision
+    try {
+      const actions = this.runtime.actions || [];
+      const votingActionNames = [
+        'CAST_VOTE',
+        'SUBMIT_MEMBER',
+        'GET_VOTING_STATS',
+        'CHECK_MEMBERSHIP',
+        'CHECK_PROPOSAL_STATUS',
+        'SUBMIT_REMOVAL',
+        'REJOIN_GROUP',
+        'INITIALIZE_VOTING',
+        'WEBHOOK_PROPOSAL',
+      ];
+
+      const votingActions = actions.filter((action) =>
+        votingActionNames.includes(action.name)
+      );
+
+      logger.info(
+        `Processing ${
+          votingActions.length
+        } voting actions for message: ${memory.content.text?.substring(
+          0,
+          50
+        )}...`
+      );
+
+      for (const action of votingActions) {
+        try {
+          const isValid = await action.validate(this.runtime, memory);
+          if (isValid) {
+            logger.info(
+              `Voting action ${action.name} validated successfully, executing handler...`
+            );
+            await action.handler(this.runtime, memory, state, {}, callback);
+          }
+        } catch (actionError) {
+          logger.error(
+            `Error processing voting action ${action.name}:`,
+            actionError
+          );
+        }
+      }
+    } catch (error) {
+      logger.error('Error processing voting actions:', error);
+    }
+
+    // Character response decision - actions have already been triggered above
+    if (responseActions !== 'RESPOND' && responseActions !== 'REPLY') {
+      logger.info(
+        `Not responding to cast based on shouldRespond decision: ${responseActions} (but actions were processed)`
+      );
+      return;
+    }
   }
 }
