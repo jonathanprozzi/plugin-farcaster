@@ -58,7 +58,36 @@ export class FarcasterClient {
         parent: parentCastId?.hash,
       });
       if (result.success) {
-        return this.getCast(result.cast.hash);
+        // For now, create a minimal cast object from the publish response
+        // to avoid the lookup API issue in SDK v3.20.0
+        const publishedCast = {
+          hash: result.cast.hash,
+          author: result.cast.author,
+          text: result.cast.text,
+          // Add minimal required fields - these would be empty for a new cast anyway
+          timestamp: new Date().toISOString(),
+          reactions: { likes: [], recasts: [], likes_count: 0, recasts_count: 0 },
+          replies: { count: 0 },
+          mentioned_profiles: [],
+          mentioned_profiles_ranges: [],
+          mentioned_channels: [],
+          mentioned_channels_ranges: [],
+          embeds: [],
+          parent_hash: parentCastId?.hash || null,
+          parent_url: null,
+          root_parent_url: null,
+          parent_author: null,
+          thread_hash: null,
+          type: 'text-short',
+          frames: [],
+          channel: null,
+          viewer_context: null,
+          object: 'cast'
+        } as unknown as NeynarCast;
+        
+        // Cache the cast
+        castCache.set(result.cast.hash, publishedCast);
+        return publishedCast;
       }
       throw new Error(`[Farcaster] Error publishing [${cast}] parentCastId: [${parentCastId}]`);
     } catch (err) {
@@ -78,12 +107,18 @@ export class FarcasterClient {
       return cachedCast;
     }
 
+    elizaLogger.log(`[Farcaster] Looking up cast with hash: ${castHash}`);
+    elizaLogger.log(`[Farcaster] Using type: ${LookupCastByHashOrWarpcastUrlTypeEnum.Hash}`);
+    
     const params = { identifier: castHash, type: LookupCastByHashOrWarpcastUrlTypeEnum.Hash };
-    const response = await this.neynar.lookupCastByHashOrWarpcastUrl(params);
-
-    castCache.set(castHash, response.cast);
-
-    return response.cast;
+    try {
+      const response = await this.neynar.lookupCastByHashOrWarpcastUrl(params);
+      castCache.set(castHash, response.cast);
+      return response.cast;
+    } catch (error) {
+      elizaLogger.error(`[Farcaster] Failed to lookup cast ${castHash}:`, error);
+      throw error;
+    }
   }
   async getMentions(request: FidRequest & { filterScore?: boolean }): Promise<NeynarCast[]> {
     const neynarMentionsResponse = await this.neynar.fetchAllNotifications({
