@@ -21,7 +21,14 @@ export class FarcasterAgentManager {
     this.runtime = runtime;
     const signerUuid = config.FARCASTER_SIGNER_UUID;
 
-    const neynarConfig = new Configuration({ apiKey: config.FARCASTER_NEYNAR_API_KEY });
+    const neynarConfig = new Configuration({ 
+      apiKey: config.FARCASTER_NEYNAR_API_KEY,
+      baseOptions: {
+        headers: {
+          'x-neynar-experimental': config.FILTER_SCORE.toString()
+        }
+      }
+    });
 
     const neynar = new NeynarAPIClient(neynarConfig);
 

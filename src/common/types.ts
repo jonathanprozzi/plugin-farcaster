@@ -1,7 +1,7 @@
 import { Memory, MessagePayload } from '@elizaos/core';
 import { DEFAULT_MAX_CAST_LENGTH, DEFAULT_POLL_INTERVAL } from './constants';
 
-import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api/models/cast-with-interactions';
+import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import { z } from 'zod';
 
 export type Profile = {
@@ -77,6 +77,12 @@ export const FarcasterConfigSchema = z.object({
       typeof val === 'string' ? val.toLowerCase() === 'true' : val
     ),
   MAX_ACTIONS_PROCESSING: z.number().int(),
+  FILTER_SCORE: z
+    .union([z.boolean(), z.string()])
+    .transform((val) =>
+      typeof val === 'string' ? val.toLowerCase() === 'true' : val
+    )
+    .default(true),
   FARCASTER_SIGNER_UUID: z.string().min(1, 'FARCASTER_SIGNER_UUID is not set'),
   FARCASTER_NEYNAR_API_KEY: z
     .string()
@@ -100,7 +106,7 @@ export enum FarcasterMessageType {
 export interface FarcasterGenericCastPayload
   extends Omit<MessagePayload, 'message'> {
   memory: Memory;
-  cast: CastWithInteractions;
+  cast: NeynarCast;
   // Enhanced with direct FID access
   fid?: number;
   authorFid?: number;
