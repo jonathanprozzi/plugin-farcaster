@@ -1,7 +1,7 @@
 import { Content, elizaLogger } from '@elizaos/core';
 import { type NeynarAPIClient, isApiErrorResponse } from '@neynar/nodejs-sdk';
-import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
-import { LookupCastByHashOrWarpcastUrlTypeEnum } from '@neynar/nodejs-sdk/build/api';
+import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api/index.js';
+import { LookupCastByHashOrWarpcastUrlTypeEnum } from '@neynar/nodejs-sdk/build/api/index.js';
 // @ts-ignore
 import { LRUCache } from 'lru-cache';
 import { DEFAULT_CAST_CACHE_SIZE, DEFAULT_CAST_CACHE_TTL } from './common/constants';

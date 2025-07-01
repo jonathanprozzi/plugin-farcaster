@@ -11,7 +11,7 @@ import {
   ModelType,
   UUID,
 } from '@elizaos/core';
-import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
+import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api/index.js';
 import type { FarcasterClient } from '../client';
 import { AsyncQueue } from '../common/asyncqueue';
 import { standardCastHandlerCallback } from '../common/callbacks';

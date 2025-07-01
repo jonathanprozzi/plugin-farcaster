@@ -1,7 +1,7 @@
 import { Memory, MessagePayload } from '@elizaos/core';
 import { DEFAULT_MAX_CAST_LENGTH, DEFAULT_POLL_INTERVAL } from './constants';
 
-import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
+import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api/index.js';
 import { z } from 'zod';
 
 export type Profile = {

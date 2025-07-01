@@ -5,7 +5,7 @@ import {
   UUID,
   createUniqueUuid,
 } from '@elizaos/core';
-import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
+import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api/index.js';
 import { FARCASTER_SOURCE } from './constants';
 import { Cast } from './types';
 

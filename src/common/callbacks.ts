@@ -1,5 +1,5 @@
 import { Content, HandlerCallback, IAgentRuntime, logger, Memory, UUID } from '@elizaos/core';
-import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
+import type { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api/index.js';
 import { FarcasterClient } from '../client';
 import { CastId, FarcasterConfig } from './types';
 import { createCastMemory, neynarCastToCast } from './utils';

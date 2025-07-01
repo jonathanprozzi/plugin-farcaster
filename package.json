@@ -1,6 +1,6 @@
 {
   "name": "@jonathanprozzi/plugin-farcaster",
-  "version": "1.0.5-fork.3",
+  "version": "1.0.5-fork.4",
   "description": "ElizaOS Farcaster Plugin (Fork with voting actions and FID surface fixes)",
   "type": "module",
   "main": "dist/index.js",

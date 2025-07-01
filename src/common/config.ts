@@ -87,6 +87,10 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         1
       ),
 
+      FILTER_SCORE:
+        runtime.getSetting('FILTER_SCORE') ||
+        parseBooleanFromText(process.env.FARCASTER_FILTER_SCORE || 'true'),
+
       FARCASTER_SIGNER_UUID:
         runtime.getSetting('FARCASTER_SIGNER_UUID') ||
         process.env.FARCASTER_SIGNER_UUID,
@@ -109,6 +113,7 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
     logger.log('Farcaster Client Configuration:');
     logger.log(`- FID: ${config.FARCASTER_FID}`);
     logger.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`);
+    logger.log(`- Filter Score: ${config.FILTER_SCORE ? 'enabled' : 'disabled'}`);
     logger.log(`- Enable Cast: ${config.ENABLE_CAST ? 'enabled' : 'disabled'}`);
 
     if (config.ENABLE_CAST) {

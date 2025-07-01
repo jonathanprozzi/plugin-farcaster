@@ -11,5 +11,4 @@ const farcasterPlugin = {
   providers: farcasterProviders,
   tests: [new FarcasterTestSuite()],
 };
-
 export default farcasterPlugin;
